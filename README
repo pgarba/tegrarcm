@@ -5,6 +5,10 @@ This version contains the needed changes to support the Nintendo Switch
 
 I'm not sure if the code is using the right RCU version but it seems that it can communicate to the device
 
+For the APX device you can use the drives from:
+https://forum.xda-developers.com/showthread.php?t=1426502
+
+On Linux no drivers are needed!
 
 Introduction
 ============
