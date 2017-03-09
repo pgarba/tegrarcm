@@ -3,7 +3,7 @@ Nintendo Switch support
 
 This version contains the needed changes to support the Nintendo Switch
 
-I'm not sure if the code us using the right RCU version but it seems that it can communicate to the device
+I'm not sure if the code is using the right RCU version but it seems that it can communicate to the device
 
 
 Introduction
