@@ -1,0 +1,328 @@
+.TH tegrarcm 1 "29 November 2012" "tegrarcm-VERSION" "NVIDIA Tegra Firmware Download Tool"
+.IX tegrarcm
+.SH NAME
+tegrarcm \- Tegra firmware download utility
+.SH SYNOPSIS
+.B tegrarcm
+[
+.I options
+]
+.SH DESCRIPTION
+This program is used to send code to a Tegra device in recovery mode. It
+supports both unlocked devices, and those locked with a PKC (private key). It
+is not capable of flashing firmware to a device, but can be used to download
+firmware that is then capable of flashing.  For example in ChromeOS tegrarcm is
+used to download a special build of U-Boot to the target Tegra device with a
+payload that it then flashes to the boot memory device.
+
+Devices with PKC enabled may be handled in two different ways:
+
+.IP 1.
+Data may be signed on-the-fly, during communication with the Tegra device, by
+providing the \-\-pkc options. This method is the simplest, but requires access
+to the device's PKC during the download process.
+
+.IP 2.
+The signing and download steps may be separated. Signed data may first be
+prepared offline, without requiring access to a Tegra device, using the
+\-\-gen\-signed\-msgs option. The signed data may later be sent to a Tegra
+device using the \-\-download\-signed\-msgs option.
+
+Both of these steps require use of the \-\-signed\-msgs\-file option to indicate
+where to write/read the signed messages. This option provides a base filename,
+to which various extensions will be appended, to form the final filenames for
+the various signed data/messages.
+
+This method is more complex, but allows separation of the download and signing
+processes. For example, a highly secure signing machine could generate the
+signed messages and pass them to a factory system for download to the Tegra
+device.
+
+.SS Platforms supported
+.IP \(bu
+.B Tegra20
+.IP \(bu
+.B Tegra30
+.IP \(bu
+.B Tegra114
+.IP \(bu
+.B Tegra124
+
+.SS How to use
+.IP \(em
+Connect a USB cable from your development system to your Tegra
+device.  You will either need a USB A to A cable or A to micro B
+depending on the target board.
+.IP \(em
+Find the appropriate BCT file for your board.  For reference boards,
+BCT files can be found in the L4T distribution from NVIDIA.
+.IP \(em
+Build some firmware for your device (such as U-Boot)
+.IP \(em
+Run tegrarcm to download the firmware
+
+.SH COMMANDS
+.TP
+.B readbct
+Read the BCT from the target device and write it to \fIbctfile\fP.
+
+.SH OPTIONS
+.TP
+.B \-\-bct \fIbctfile\fP
+Specify the BCT file to download to the Tegra device.  This file contains
+memory configuration information for the board.  BCT files can be
+obtained through the NVIDIA L4T distribution or generated with
+cbootimage and a proper configuration file.
+.TP
+.B \-\-bootloader \fIblfile\fP
+Specify the bootloader file to download to the Tegra device.  This is
+the firmware file that will be downloaded and executed.
+.TP
+.B \-\-loadaddr \fIloadaddr\fP
+Specify the address the bootloader will be loaded at.  This should be
+specified in hex and is typically 0x108000 for a Tegra20 device or
+0x80108000 for a Tegra30, Tegra114, or Tegra124 device.
+.TP
+.B \-\-entryaddr \fIentryaddr\fP
+Specify the entry address that control will be passed to after the
+firmware is loaded.  This should be specified in hex.  If this option
+is omitted it is assumed to be the same as the load address.
+.TP
+.B \-\-version
+Print the version number and exit.
+.TP
+.B \-\-help
+Print help text and exit.
+.TP
+.B \-\-miniloader \fImlfile\fP
+Read the miniloader from the specified file instead of using the
+built-in one.
+.TP
+.B \-\-miniloader_entry \fImlentry\fP
+Specify the entry address of the miniloader.
+.TP
+.B \-\-usb\-port\-path \fIpath\fP
+Specify the physical USB port path of the Tegra device to control.
+.TP
+.B \-\-pkc \fIkey.der\fP
+Specify the key file for secured devices. The private key should be in DER format.
+.TP
+.B \-\-gen\-signed\-msgs
+Generate signed messages for PKC secured devices.
+.TP
+.B \-\-signed\-msgs\-file \fImsg_file_prefix\fP
+Specify messages file name prefix.
+.TP
+.B \-\-download\-signed\-msgs
+Download signed messages.
+.TP
+.B \-\-soc \fItegra_soc_#\fP
+Specify Tegra SoC chip model number, ie, 124.
+.TP
+.B \-\-usb\-timeout \fItimeout_ms\fP
+Specify usb transfer timeout value in ms, 0 for unlimited timeout.
+
+.SH USB PORT PATH
+
+By default, tegrarcm operates on the first USB applicable device it finds.
+In a system that contains multiple Tegra devices, the user may wish to
+specify which device tegrarcm should operate upon. The \-\-usb\-port\-path
+option allows this, and in a manner that is most immune to the set of attached
+USB devices varying.
+
+Note that the USB port path is associated with a physical USB port on a
+particular hub. This value will vary if you physically re-organize your USB
+connections. This feature is still useful even if your USB topology changes,
+providing you have some other mechanism to differentiate attached devices. For
+example, you could use a wrapper script around tegrarcm that identifies the
+appropriate device by other means, then automatically calculates the USB port
+path using the procedures below, and passes the value to tegrarcm.
+
+To determine the USB port path of a device, you must plug it in and find the
+current USB bus and USB device number of the device, then map that to the USB
+port path. Simply run lsusb to find the current USB bus and device number. If
+you have multiple NVIDIA devices attached, you may need to unplug and replug
+the Tegra device to ensure you know which is which (all while not changing the
+state of any other USB devices so you don't confuse yourself).
+
+.nf
+$ lsusb
+[...]
+Bus 003 Device 039: ID 0955:7721 NVidia Corp.
+Bus 003 Device 045: ID 0955:7140 NVidia Corp.
+[...]
+.fi
+
+Then, to determine the USB port path, do one of:
+
+.IP 1.
+Execute udevadm on the USB device, and look for the DEVPATH entry. The
+final component in the path is the USB port path:
+
+.nf
+$ udevadm info /dev/bus/usb/003/045
+P: /devices/pci0000:00/0000:00:14.0/usb3/3-10/3-10.4
+N: bus/usb/003/045
+E: BUSNUM=003
+E: DEVNUM=045
+E: DEVPATH=/devices/pci0000:00/0000:00:14.0/usb3/3-10/3-10.4
+.fi
+
+.IP 2.
+Look at all the sub-directories of /sys/bus/usb/devices/* that do not
+contain either ":" or "usb". Each of these will contain a busnum and
+devnum file. Find the directory which matches the lsusb output, and use
+its name:
+
+.nf
+$ cat /sys/bus/usb/devices/3-10.4/busnum
+3
+$ cat /sys/bus/usb/devices/3-10.4/devnum
+45
+.fi
+
+Alternatively, you may already have udev rules that create a device node
+symlink for the device (after some specific identification algorithm). In
+that case, you can search the udev output for MAJOR/MINOR values, or
+/sys/bus/usb/devices/* directories for "dev" files, that match the device
+node the symlink points to.
+
+Once the port path is known, this value will not vary unless your USB
+connections are physically changed, so you can use it over and over
+without repeating the steps above.
+
+.SH EXAMPLES
+1) To download U-Boot to Seaboard, with no PKC enabled:
+
+.nf
+$ sudo tegrarcm --bct seaboard.bct --bootloader u-boot.bin --loadaddr 0x108000
+bct file: seaboard.bct
+bootloader file: u-boot.bin
+load addr 0x108000
+entry addr 0x108000
+device id: 0x7820
+uid:  0x33c20c0413fb217
+RCM version: 2.1
+downloading miniloader to target...
+miniloader downloaded successfully
+Chip UID:                0x33c20c0413fb217
+Chip ID:                 0x20
+Chip ID Major Version:   0x1
+Chip ID Minor Version:   0x4
+Chip SKU:                0x18 (t25)
+Boot ROM Version:        0x1
+Boot Device:             0x3 (SPI)
+Operating Mode:          0x3 (developer mode)
+Device Config Strap:     0x0
+Device Config Fuse:      0x0
+SDRAM Config Strap:      0x0
+sending file: seaboard.bct
+- 4080/4080 bytes sent
+seaboard.bct sent successfully
+sending file: u-boot.bin
+- 268314/268314 bytes sent
+u-boot.bin sent successfully
+.fi
+
+2) To read the BCT from a system:
+
+.nf
+$ sudo tegrarcm --bct ventana.bct readbct
+bct file: ventana.bct
+device id: 0x7820
+reading BCT from system, writing to ventana.bct...done!
+.fi
+
+3) To download U-Boot to Jetson TK1, with PKC enabled, in one step:
+
+.nf
+$ sudo tegrarcm --bct=jetson-tk1.bct --bootloader=u-boot.bin --loadaddr=0x83d88000 --pkc=rsa_priv.der
+bct file: jetson-tk1-bct.bct
+bootloader file: u-boot.bin
+load addr 0x83d88000
+entry addr 0x83d88000
+device id: 0x7140
+uid:  0x640010017410b1000000000016020540
+RCM version: 64.1
+downloading miniloader to target at address 0x4000e000 (136920 bytes)...
+miniloader downloaded successfully
+Chip UID:                0x000000017410b1000000000016020540
+Chip ID:                 0x40
+Chip ID Major Version:   0x1
+Chip ID Minor Version:   0x1
+Chip SKU:                0x81 (t124)
+Boot ROM Version:        0x1
+Boot Device:             0x2 (EMMC)
+Operating Mode:          0x6 (odm secure mode with PKC)
+Device Config Strap:     0x0
+Device Config Fuse:      0x0
+SDRAM Config Strap:      0x3
+sending file: jetson-tk1-bct.bct
+- 8192/8192 bytes sent
+jetson-tk1-bct.bct sent successfully
+sending file: u-boot.bin
+| 440004/440004 bytes sent
+u-boot.bin sent successfully
+.fi
+
+4) To generate signed messages that will allow later downloading of U-Boot to
+Jetson TK1 with PKC enabled:
+
+.nf
+$ sudo tegrarcm --gen-signed-msgs --signed-msgs-file rel_1001.bin --bootloader=u-boot.bin --loadaddr 0x83d88000 --soc 124 --pkc rsa_priv.der
+bootloader file: u-boot.bin
+load addr 0x83d88000
+entry addr 0x83d88000
+Create file rel_1001.bin.qry...
+Create file rel_1001.bin.ml...
+Create file rel_1001.bin.bl...
+.fi
+
+
+5) To download previously-generated signed messages to Jetson TK1 with PKC
+enabled:
+
+.nf
+$ sudo tegrarcm --download-signed-msgs --signed-msgs-file rel_1001.bin --bct=jetson-tk1-bct.bct --bootloader=u-boot.bin --loadaddr 0x83d88000
+bct file: jetson-tk1-bct.bct
+bootloader file: u-boot.bin
+load addr 0x83d88000
+entry addr 0x83d88000
+device id: 0x7140
+uid:  0x640010017410b1000000000016020540
+download signed query version rcm from file rel_1001.bin.qry
+RCM version: 64.1
+download signed miniloader rcm from file rel_1001.bin.ml
+downloading miniloader to target at address 0x4000e000 (137572 bytes)...
+miniloader downloaded successfully
+Chip UID:                0x000000017410b1000000000016020540
+Chip ID:                 0x40
+Chip ID Major Version:   0x1
+Chip ID Minor Version:   0x1
+Chip SKU:                0x81 (t124)
+Boot ROM Version:        0x1
+Boot Device:             0x2 (EMMC)
+Operating Mode:          0x6 (odm secure mode with PKC)
+Device Config Strap:     0x0
+Device Config Fuse:      0x0
+SDRAM Config Strap:      0x3
+sending file: jetson-tk1-bct.bct
+- 8192/8192 bytes sent
+jetson-tk1-bct.bct sent successfully
+sending file: rel_1001.bin.bl
+- 256/256 bytes sent
+rel_1001.bin.bl sent successfully
+sending file: u-boot.bin
+| 440004/440004 bytes sent
+u-boot.bin sent successfully
+.fi
+
+
+.SH RETURN VALUE
+If any error occurs a non zero exit status is returned.
+
+.SH SEE ALSO
+.BR cbootimage (1),
+
+.SH AUTHOR
+Allen Martin, <amartin@nvidia.com>
